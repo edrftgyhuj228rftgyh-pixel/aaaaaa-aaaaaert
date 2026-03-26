@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Анализатор капиталов Бурдьё</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#fff;--bg2:#f5f4f0;--bg3:#eceae5;--text:#1a1a18;--text2:#5a5a56;--text3:#9a9994;--border:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);--accent:#534AB7;--accent2:#3F38A0;--r:10px;--r-sm:7px}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1a;--bg2:#252523;--bg3:#2f2f2c;--text:#e8e6df;--text2:#a8a6a0;--text3:#6a6a64;--border:rgba(255,255,255,0.10);--border2:rgba(255,255,255,0.18)}}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.6;color:var(--text);background:var(--bg);padding:20px;max-width:960px;margin:0 auto}
+h2{font-size:20px;font-weight:600;margin-bottom:2px}
+.sub{font-size:12px;color:var(--text3);margin-bottom:20px}
+.tabs{display:flex;gap:4px;margin-bottom:18px;border-bottom:0.5px solid var(--border)}
+.tab{padding:7px 16px;border-radius:var(--r-sm) var(--r-sm) 0 0;font-size:13px;cursor:pointer;border:0.5px solid transparent;background:none;color:var(--text2);font-weight:500;transition:all .15s;margin-bottom:-1px}
+.tab.active{background:var(--bg);border-color:var(--border);border-bottom-color:var(--bg);color:var(--text)}
+.tab:not(.active):hover{background:var(--bg2)}
+.card{background:var(--bg2);border-radius:var(--r);padding:16px;margin-bottom:12px;border:0.5px solid var(--border)}
+.card-title{font-size:13px;font-weight:500;margin-bottom:10px;color:var(--text)}
+.card-taste{border-color:rgba(83,74,183,0.3);background:rgba(83,74,183,0.03)}
+input[type=text],input[type=number],select,textarea{background:var(--bg);color:var(--text);border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:6px 10px;font-size:13px;font-family:inherit;outline:none;width:100%}
+input[type=text]:focus,input[type=number]:focus,select:focus,textarea:focus{border-color:var(--accent)}
+input[type=color]{width:36px;height:30px;border:0.5px solid var(--border2);border-radius:var(--r-sm);padding:2px;background:var(--bg);cursor:pointer}
+button{padding:7px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:500;border:0.5px solid var(--border2);background:var(--bg);color:var(--text);cursor:pointer;transition:background .13s,transform .1s;white-space:nowrap}
+button:hover{background:var(--bg3)}
+button:active{transform:scale(0.98)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent2)}
+.btn-taste{background:#534AB7;color:#fff;border-color:#534AB7}
+.btn-taste:hover{background:#3F38A0}
+.btn-danger{color:#c0392b;border-color:rgba(192,57,43,0.25)}
+.btn-danger:hover{background:rgba(192,57,43,0.06)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row-sep{display:flex;gap:8px;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--border);flex-wrap:wrap}
+.row-sep:last-child{border-bottom:none}
+.lbl-top{font-size:12px;color:var(--text2);margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:500px){.grid2{grid-template-columns:1fr}}
+.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:500;color:#fff}
+.badge-taste{background:#534AB7}
+.tag{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:500}
+.tag-hi{background:#EAF3DE;color:#27500A}
+.tag-mid{background:#FAEEDA;color:#633806}
+.tag-lo{background:#FCEBEB;color:#791F1F}
+@media(prefers-color-scheme:dark){.tag-hi{background:#173404;color:#C0DD97}.tag-mid{background:#412402;color:#FAC775}.tag-lo{background:#501313;color:#F7C1C1}}
+.opt-row{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.opt-row input[type=text]{flex:1;min-width:0}
+.hint{font-size:11px;color:var(--text3);line-height:1.7;margin-bottom:10px}
+.err{color:#c0392b;font-size:12px;margin-top:6px;display:none}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px}
+.metric-card{background:var(--bg2);border-radius:var(--r-sm);padding:12px 8px;text-align:center;border:0.5px solid var(--border)}
+.metric-val{font-size:22px;font-weight:600}
+.metric-lbl{font-size:11px;color:var(--text2);margin-bottom:3px}
+.metric-sub{font-size:10px;color:var(--text3);margin-top:2px}
+.chart-title{font-size:13px;font-weight:500;margin-bottom:4px}
+.chart-sub{font-size:11px;color:var(--text3);margin-bottom:10px}
+.chart-wrap{position:relative;width:100%}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:7px 10px;text-align:left;font-weight:500;font-size:11px;color:var(--text2);background:var(--bg2);border-bottom:0.5px solid var(--border);white-space:nowrap}
+td{padding:5px 10px;border-bottom:0.5px solid var(--border)}
+tr:last-child td{border-bottom:none}
+.tbl-wrap{overflow-x:auto}
+.q-block{background:var(--bg);border-radius:var(--r-sm);border:0.5px solid var(--border);margin-bottom:8px;padding:12px}
+.q-block-taste{border-color:rgba(83,74,183,0.25);background:rgba(83,74,183,0.02)}
+.q-header{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+.q-num{font-size:11px;font-weight:600;color:var(--text3);flex-shrink:0;min-width:24px}
+.q-num-taste{color:#534AB7}
+.saved-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a18;color:#fff;padding:8px 18px;border-radius:20px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.saved-toast.show{opacity:1}
+.vtab-area{display:none}
+.vtab-area.active{display:block}
+textarea{resize:vertical}
+.export-box textarea{font-family:monospace;font-size:11px;min-height:80px}
+#space-container{position:relative;width:100%;padding-bottom:75%;background:var(--bg);border-radius:var(--r-sm);border:0.5px solid var(--border);overflow:hidden}
+#space-svg{position:absolute;top:0;left:0;width:100%;height:100%}
+.tooltip{position:fixed;background:#1a1a18;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .15s;z-index:100;line-height:1.8;white-space:nowrap}
+.space-mode-row{display:flex;gap:8px;margin-bottom:10px;align-items:center}
+.space-mode-row label{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px;cursor:pointer}
+</style>
+</head>
+<body>
+
+<h2 id="app-title">Анализатор капиталов Бурдьё</h2>
+<p class="sub" id="app-sub">Школа юного социолога</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="setMainTab('settings')">⚙️ Настройки опросника</button>
+  <button class="tab" onclick="setMainTab('analyze')">📊 Анализ данных</button>
+</div>
+
+<!-- ═══════ НАСТРОЙКИ ═══════ -->
+<div class="vtab-area active" id="tab-settings">
+  <div class="card">
+    <p class="card-title">Основное</p>
+    <div class="grid2">
+      <div><p class="lbl-top">Название</p><input type="text" id="cfg-title" placeholder="Анализатор капиталов Бурдьё"></div>
+      <div><p class="lbl-top">Подзаголовок</p><input type="text" id="cfg-sub" placeholder="Школа юного социолога"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <p class="card-title" style="margin:0">Капиталы</p>
+      <button class="btn-sm" onclick="addCapital()">+ Добавить капитал</button>
+    </div>
+    <p class="hint">Назначьте роли: <b>Ось X</b> — горизонталь графика, <b>Ось Y</b> — вертикаль. Остальные капиталы отображаются только в таблице.</p>
+    <div id="caps-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <p class="card-title" style="margin:0">Вопросы о капиталах</p>
+      <button class="btn-sm btn-primary" onclick="addQuestion()">+ Добавить вопрос</button>
+    </div>
+    <p class="hint">Порядок вопросов должен совпадать с Google Forms. Ключевые слова разделяются символом |. Ответы — один вариант из списка.</p>
+    <div id="qs-list"></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid var(--border)">
+      <button class="btn-sm btn-primary" onclick="addQuestion()">+ Добавить вопрос</button>
+    </div>
+  </div>
+
+  <!-- ВОПРОСЫ О ВКУСАХ -->
+  <div class="card card-taste">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <div>
+        <p class="card-title" style="margin:0;color:#534AB7">🎨 Вопросы о вкусах</p>
+        <p style="font-size:11px;color:var(--text3);margin-top:2px">Идут после вопросов о капиталах. Ответы — несколько вариантов через запятую (чекбоксы в Google Forms).</p>
+      </div>
+      <button class="btn-sm btn-taste" onclick="addTasteQuestion()">+ Добавить вопрос</button>
+    </div>
+    <p class="hint">Названия вариантов ответа — это то, что будет отображаться на карте Бурдьё. Каждая метка встанет в среднюю позицию тех, кто выбрал этот вкус.</p>
+    <div id="tqs-list"></div>
+    <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid rgba(83,74,183,0.2)">
+      <button class="btn-sm btn-taste" onclick="addTasteQuestion()">+ Добавить вопрос о вкусах</button>
+    </div>
+  </div>
+
+  <div class="row" style="margin-bottom:16px;gap:8px;flex-wrap:wrap">
+    <button class="btn-primary" onclick="saveConfig()">💾 Сохранить настройки</button>
+    <button onclick="exportConfig()">📤 Экспорт конфига</button>
+    <button onclick="toggleImport()">📥 Импорт конфига</button>
+    <button onclick="resetConfig()" style="color:var(--text3)">Сбросить</button>
+  </div>
+
+  <div id="import-area" style="display:none" class="card export-box">
+    <p class="card-title">Вставьте JSON конфига</p>
+    <textarea id="import-text" placeholder='{"title":"...","capitals":[...],"questions":[],"tasteQuestions":[]}'></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn-primary btn-sm" onclick="importConfig()">Применить</button>
+      <span id="import-err" style="font-size:12px;color:#c0392b"></span>
+    </div>
+  </div>
+
+  <div id="export-area" style="display:none" class="card export-box">
+    <p class="card-title">Конфиг для передачи коллеге</p>
+    <textarea id="export-text" readonly onclick="this.select()"></textarea>
+    <p class="hint" style="margin-top:6px">Скопируйте текст → отправьте коллеге → он вставит через «Импорт конфига»</p>
+  </div>
+</div>
+
+<!-- ═══════ АНАЛИЗ ═══════ -->
+<div class="vtab-area" id="tab-analyze">
+  <div id="analyze-upload">
+    <div class="card">
+      <p class="card-title">Загрузить данные</p>
+      <p class="hint">Экспортируйте из Google Таблиц: <b>Файл → Скачать → CSV</b>. Вставьте содержимое ниже.<br>
+      Первый столбец (Отметка времени) пропускается. Сначала идут вопросы о капиталах, затем о вкусах.</p>
+      <textarea id="csv-input" style="min-height:110px;font-family:monospace;font-size:11px" placeholder="Вставьте содержимое CSV-файла..."></textarea>
+      <div class="err" id="csv-err"></div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn-primary" onclick="processCSV()">Рассчитать →</button>
+        <button onclick="loadSample()">Загрузить пример</button>
+      </div>
+    </div>
+    <div class="card">
+      <p class="card-title">Порядок вопросов в форме</p>
+      <div class="tbl-wrap"><table id="scheme-table"></table></div>
+    </div>
+  </div>
+
+  <div id="analyze-results" style="display:none">
+    <div class="tabs" style="border-color:var(--border)">
+      <button class="tab active" onclick="setSubTab('space')">Пространство Бурдьё</button>
+      <button class="tab" onclick="setSubTab('overview')">Обзор</button>
+      <button class="tab" onclick="setSubTab('table')">Таблица</button>
+    </div>
+
+    <div class="vtab-area active" id="subtab-space">
+      <div class="card">
+        <p class="chart-title" id="space-title">Пространство Бурдьё</p>
+        <div class="space-mode-row">
+          <label><input type="radio" name="spaceMode" value="tastes" checked onchange="onModeChange()"> 🎨 Вкусы на карте</label>
+          <label><input type="radio" name="spaceMode" value="respondents" onchange="onModeChange()"> 👤 Респонденты</label>
+          <label><input type="radio" name="spaceMode" value="both" onchange="onModeChange()"> Оба</label>
+        </div>
+        <p class="chart-sub" id="space-sub">Метки показывают среднюю позицию тех, кто выбрал данный вкус.</p>
+        <div id="space-container">
+          <svg id="space-svg" viewBox="0 0 540 420" xmlns="http://www.w3.org/2000/svg"></svg>
+        </div>
+        <div id="quad-legend" style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:12px"></div>
+      </div>
+    </div>
+
+    <div class="vtab-area" id="subtab-overview">
+      <div class="metric-grid" id="metric-cards"></div>
+      <div class="card">
+        <p class="chart-title">Распределение по квадрантам</p>
+        <div class="chart-wrap" style="height:210px"><canvas id="quad-chart"></canvas></div>
+      </div>
+      <div class="card">
+        <p class="chart-title">Средние значения (% от максимума)</p>
+        <div class="chart-wrap" style="height:200px"><canvas id="bar-chart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="vtab-area" id="subtab-table">
+      <div class="card">
+        <p class="chart-title">Таблица — <span id="rcnt"></span> респондентов</p>
+        <div class="tbl-wrap"><table><thead id="res-thead"></thead><tbody id="res-tbody"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="row" style="padding:6px 0 24px"><button onclick="resetAnalysis()">← Новый файл</button></div>
+  </div>
+</div>
+
+<div class="saved-toast" id="toast"></div>
+<div class="tooltip" id="tooltip"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const DEFAULT={
+  title:"Анализатор капиталов Бурдьё",subtitle:"Школа юного социолога",
+  capitals:[
+    {id:"ec",label:"Экономический",emoji:"💰",color:"#BA7517",role:"x"},
+    {id:"cu",label:"Культурный",   emoji:"📚",color:"#534AB7",role:"y"},
+  ],
+  questions:[
+    {capital:"ec",label:"Доход семьи",options:[{text:"ниже среднего|ниже",score:0},{text:"средний|средне",score:1},{text:"выше среднего|выше",score:2}]},
+    {capital:"ec",label:"Отпуск",options:[{text:"не ездим|не езжу",score:0},{text:"несколько лет|редко",score:1},{text:"каждый год|ежегодно",score:2}]},
+    {capital:"ec",label:"Жильё",options:[{text:"аренда|снимаем",score:0},{text:"квартира|своё",score:1},{text:"дом|несколько",score:2}]},
+    {capital:"cu",label:"Образование",options:[{text:"среднее",score:0},{text:"специальное|техникум",score:1},{text:"высшее|университет",score:2}]},
+    {capital:"cu",label:"Книги дома",options:[{text:"меньше|мало",score:0},{text:"20–100|20-100",score:1},{text:"больше|много",score:2}]},
+    {capital:"cu",label:"Культурные события",options:[{text:"никогда|редко",score:0},{text:"несколько раз",score:1},{text:"месяц|регулярно",score:2}]},
+    {capital:"cu",label:"Хобби",options:[{text:"нет",score:0},{text:"одно",score:1},{text:"два|несколько",score:2}]},
+  ],
+  // Вопросы о вкусах — несколько вариантов ответа, отображаются на карте
+  tasteQuestions:[
+    {label:"Любимые жанры музыки",options:["Классика","Джаз","Рок","Поп","Рэп / хип-хоп","Электронная","Фолк"]},
+    {label:"Любимые жанры книг",options:["Классическая литература","Современная проза","Фантастика","Детективы","Нон-фикшн","Поэзия"]},
+  ]
+};
+
+const KEY='bourdieu_cfg_v4';
+let CFG=JSON.parse(JSON.stringify(DEFAULT));
+let charts={};
+let lastResults=null;
+let lastTasteData=null;
+
+function load(){try{const v=localStorage.getItem(KEY);if(v)CFG=JSON.parse(v);if(!CFG.tasteQuestions)CFG.tasteQuestions=[];}catch(_){}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(CFG));}catch(_){}}
+
+const ROLES=[{v:'x',l:'Ось X (горизонт.)'},{v:'y',l:'Ось Y (вертикаль)'},{v:'other',l:'Только таблица'}];
+
+function setMainTab(n){
+  ['settings','analyze'].forEach(t=>document.getElementById('tab-'+t).classList.toggle('active',t===n));
+  document.querySelectorAll('.tabs:first-of-type .tab').forEach((el,i)=>el.classList.toggle('active',['settings','analyze'][i]===n));
+  if(n==='analyze')buildSchemeTable();
+}
+function setSubTab(n){
+  ['space','overview','table'].forEach(t=>document.getElementById('subtab-'+t).classList.toggle('active',t===n));
+  document.querySelectorAll('#analyze-results .tabs .tab').forEach((el,i)=>el.classList.toggle('active',['space','overview','table'][i]===n));
+  if(n==='space'&&lastResults)setTimeout(()=>drawSpace(lastResults,lastTasteData),30);
+  setTimeout(()=>Object.values(charts).forEach(c=>{try{c.resize()}catch(_){}}),60);
+}
+
+function onModeChange(){
+  if(lastResults)drawSpace(lastResults,lastTasteData);
+  const mode=document.querySelector('input[name=spaceMode]:checked').value;
+  const sub=document.getElementById('space-sub');
+  if(mode==='tastes') sub.textContent='Метки показывают среднюю позицию тех, кто выбрал данный вкус.';
+  else if(mode==='respondents') sub.textContent='Каждая точка — один респондент. Наведите для подробностей.';
+  else sub.textContent='Метки вкусов + точки респондентов.';
+}
+
+// ── SETTINGS ─────────────────────────────────────────────────
+function renderSettings(){
+  document.getElementById('cfg-title').value=CFG.title||'';
+  document.getElementById('cfg-sub').value=CFG.subtitle||'';
+  document.getElementById('app-title').textContent=CFG.title||'Анализатор';
+  document.getElementById('app-sub').textContent=CFG.subtitle||'';
+  renderCapitals();renderQuestions();renderTasteQuestions();
+}
+
+function renderCapitals(){
+  document.getElementById('caps-list').innerHTML=CFG.capitals.map((c,i)=>`
+    <div class="row-sep">
+      <input type="text" value="${esc(c.emoji||'')}" placeholder="💰" style="width:46px" oninput="CFG.capitals[${i}].emoji=this.value">
+      <input type="text" value="${esc(c.label)}" placeholder="Название" style="flex:1;min-width:100px" oninput="CFG.capitals[${i}].label=this.value;reRenderQSelects()">
+      <input type="color" value="${c.color}" oninput="CFG.capitals[${i}].color=this.value">
+      <select onchange="CFG.capitals[${i}].role=this.value">${ROLES.map(r=>`<option value="${r.v}"${c.role===r.v?' selected':''}>${r.l}</option>`).join('')}</select>
+      <button class="btn-sm btn-danger" onclick="removeCapital(${i})">✕</button>
+    </div>`).join('');
+}
+function addCapital(){CFG.capitals.push({id:'cap'+Date.now(),label:'Новый капитал',emoji:'🔵',color:'#888888',role:'other'});renderCapitals();}
+function removeCapital(i){if(!confirm('Удалить капитал?'))return;CFG.capitals.splice(i,1);CFG.questions=CFG.questions.filter(q=>q.capital!==CFG.capitals[i]?.id);renderCapitals();renderQuestions();}
+function reRenderQSelects(){CFG.questions.forEach((q,qi)=>{const s=document.getElementById(`qcap-${qi}`);if(s)s.innerHTML=CFG.capitals.map(c=>`<option value="${c.id}"${q.capital===c.id?' selected':''}>${esc(c.emoji)} ${esc(c.label)}</option>`).join('');});}
+
+function renderQuestions(){document.getElementById('qs-list').innerHTML=CFG.questions.map((q,qi)=>renderQuestion(q,qi)).join('');}
+function renderQuestion(q,qi){
+  return`<div class="q-block" id="qblock-${qi}">
+    <div class="q-header">
+      <span class="q-num">Q${qi+1}</span>
+      <select id="qcap-${qi}" onchange="CFG.questions[${qi}].capital=this.value" style="width:auto;flex-shrink:0">
+        ${CFG.capitals.map(c=>`<option value="${c.id}"${q.capital===c.id?' selected':''}>${esc(c.emoji)} ${esc(c.label)}</option>`).join('')}
+      </select>
+      <input type="text" value="${esc(q.label)}" placeholder="Название вопроса" style="flex:1;min-width:0" oninput="CFG.questions[${qi}].label=this.value">
+      <button class="btn-sm btn-danger" onclick="removeQuestion(${qi})">✕</button>
+    </div>
+    ${q.options.map((o,oi)=>`
+      <div class="opt-row" id="opt-${qi}-${oi}">
+        <span style="font-size:11px;color:var(--text3);width:20px;flex-shrink:0">${oi}</span>
+        <input type="text" value="${esc(o.text)}" placeholder="ключевые слова через |" oninput="CFG.questions[${qi}].options[${oi}].text=this.value">
+        <span style="font-size:11px;color:var(--text2);flex-shrink:0">балл</span>
+        <input type="number" value="${o.score}" min="0" max="99" style="width:60px;flex-shrink:0" oninput="CFG.questions[${qi}].options[${oi}].score=+this.value">
+        ${q.options.length>1?`<button class="btn-sm btn-danger" style="flex-shrink:0" onclick="removeOption(${qi},${oi})">✕</button>`:'<div style="width:58px"></div>'}
+      </div>`).join('')}
+    <button class="btn-sm" onclick="addOption(${qi})" style="margin-top:6px">+ вариант ответа</button>
+  </div>`;
+}
+function addQuestion(){const capId=CFG.capitals[0]?.id||'';CFG.questions.push({capital:capId,label:'Новый вопрос',options:[{text:'',score:0},{text:'',score:1},{text:'',score:2}]});renderQuestions();setTimeout(()=>{const l=document.getElementById(`qblock-${CFG.questions.length-1}`);if(l)l.scrollIntoView({behavior:'smooth',block:'nearest'});},100);}
+function removeQuestion(qi){CFG.questions.splice(qi,1);renderQuestions();}
+function addOption(qi){CFG.questions[qi].options.push({text:'',score:CFG.questions[qi].options.length});const b=document.getElementById(`qblock-${qi}`);if(b)b.outerHTML=renderQuestion(CFG.questions[qi],qi);}
+function removeOption(qi,oi){if(CFG.questions[qi].options.length<=1)return;CFG.questions[qi].options.splice(oi,1);const b=document.getElementById(`qblock-${qi}`);if(b)b.outerHTML=renderQuestion(CFG.questions[qi],qi);}
+
+// ── TASTE QUESTIONS ──────────────────────────────────────────
+function renderTasteQuestions(){
+  if(!CFG.tasteQuestions)CFG.tasteQuestions=[];
+  document.getElementById('tqs-list').innerHTML=CFG.tasteQuestions.map((q,qi)=>renderTasteQuestion(q,qi)).join('');
+}
+function renderTasteQuestion(q,qi){
+  return`<div class="q-block q-block-taste" id="tqblock-${qi}">
+    <div class="q-header">
+      <span class="q-num q-num-taste">🎨 ${qi+1}</span>
+      <input type="text" value="${esc(q.label)}" placeholder="Название вопроса (например: Любимые жанры музыки)" style="flex:1;min-width:0" oninput="CFG.tasteQuestions[${qi}].label=this.value">
+      <button class="btn-sm btn-danger" onclick="removeTasteQuestion(${qi})">✕</button>
+    </div>
+    <p style="font-size:11px;color:var(--text3);margin-bottom:8px">Варианты ответа — названия вкусов, которые появятся на карте:</p>
+    ${q.options.map((o,oi)=>`
+      <div class="opt-row" id="topt-${qi}-${oi}">
+        <span style="font-size:11px;color:#534AB7;width:20px;flex-shrink:0">•</span>
+        <input type="text" value="${esc(o)}" placeholder="Название вкуса (например: Классика)" oninput="CFG.tasteQuestions[${qi}].options[${oi}]=this.value">
+        ${q.options.length>1?`<button class="btn-sm btn-danger" style="flex-shrink:0" onclick="removeTasteOption(${qi},${oi})">✕</button>`:''}
+      </div>`).join('')}
+    <button class="btn-sm" onclick="addTasteOption(${qi})" style="margin-top:6px;color:#534AB7;border-color:rgba(83,74,183,0.3)">+ добавить вкус</button>
+  </div>`;
+}
+function addTasteQuestion(){if(!CFG.tasteQuestions)CFG.tasteQuestions=[];CFG.tasteQuestions.push({label:'Новый вопрос о вкусах',options:['Вариант 1','Вариант 2','Вариант 3']});renderTasteQuestions();}
+function removeTasteQuestion(qi){CFG.tasteQuestions.splice(qi,1);renderTasteQuestions();}
+function addTasteOption(qi){CFG.tasteQuestions[qi].options.push('');const b=document.getElementById(`tqblock-${qi}`);if(b)b.outerHTML=renderTasteQuestion(CFG.tasteQuestions[qi],qi);}
+function removeTasteOption(qi,oi){if(CFG.tasteQuestions[qi].options.length<=1)return;CFG.tasteQuestions[qi].options.splice(oi,1);const b=document.getElementById(`tqblock-${qi}`);if(b)b.outerHTML=renderTasteQuestion(CFG.tasteQuestions[qi],qi);}
+
+function saveConfig(){
+  CFG.title=document.getElementById('cfg-title').value.trim()||'Анализатор';
+  CFG.subtitle=document.getElementById('cfg-sub').value.trim();
+  document.getElementById('app-title').textContent=CFG.title;
+  document.getElementById('app-sub').textContent=CFG.subtitle;
+  save();showToast('Сохранено ✓');
+}
+function exportConfig(){document.getElementById('export-area').style.display='block';document.getElementById('export-text').value=JSON.stringify(CFG,null,2);}
+function toggleImport(){const a=document.getElementById('import-area');a.style.display=a.style.display==='none'?'block':'none';}
+function importConfig(){
+  try{const v=JSON.parse(document.getElementById('import-text').value);if(!v.capitals||!v.questions)throw new Error('Нет полей capitals/questions');if(!v.tasteQuestions)v.tasteQuestions=[];CFG=v;renderSettings();save();document.getElementById('import-area').style.display='none';document.getElementById('import-err').textContent='';showToast('Загружено ✓');}
+  catch(e){document.getElementById('import-err').textContent='Ошибка: '+e.message;}
+}
+function resetConfig(){if(!confirm('Сбросить к умолчанию?'))return;CFG=JSON.parse(JSON.stringify(DEFAULT));renderSettings();save();showToast('Сброшено');}
+
+// ── SCHEME TABLE ─────────────────────────────────────────────
+function buildSchemeTable(){
+  const tqs=CFG.tasteQuestions||[];
+  document.getElementById('scheme-table').innerHTML=
+    '<tr><th>#</th><th>Тип</th><th>Вопрос</th><th>Варианты</th></tr>'+
+    CFG.questions.map((q,i)=>{
+      const cap=CFG.capitals.find(c=>c.id===q.capital)||{emoji:'?',label:'?',color:'#888'};
+      return`<tr><td style="color:var(--text3)">${i+1}</td>
+        <td><span class="badge" style="background:${cap.color}">${cap.emoji} ${cap.label}</span></td>
+        <td>${esc(q.label)}</td>
+        <td style="font-size:11px;color:var(--text2)">${q.options.map(o=>`${o.text.split('|')[0]}→${o.score}`).join(', ')}</td></tr>`;
+    }).join('')+
+    tqs.map((q,i)=>{
+      return`<tr style="background:rgba(83,74,183,0.04)">
+        <td style="color:#534AB7">${CFG.questions.length+i+1}</td>
+        <td><span class="badge badge-taste">🎨 Вкусы</span></td>
+        <td>${esc(q.label)}</td>
+        <td style="font-size:11px;color:var(--text2)">несколько вариантов: ${q.options.map(o=>esc(o)).join(', ')}</td></tr>`;
+    }).join('');
+}
+
+// ── SCORING ───────────────────────────────────────────────────
+function getMaxScores(){const mx={};CFG.capitals.forEach(c=>mx[c.id]=0);CFG.questions.forEach(q=>{mx[q.capital]+=Math.max(...q.options.map(o=>o.score));});return mx;}
+function scoreRow(row){
+  const scores={};CFG.capitals.forEach(c=>scores[c.id]=0);
+  CFG.questions.forEach((q,i)=>{
+    const a=(row[i]||'').toLowerCase().trim();let best=0;
+    for(let oi=q.options.length-1;oi>=0;oi--){const kws=q.options[oi].text.toLowerCase().split('|');if(kws.some(kw=>kw.trim()&&a.includes(kw.trim()))){best=q.options[oi].score;break;}}
+    scores[q.capital]+=best;
+  });return scores;
+}
+function getQuad(nx,ny){
+  if(nx>=0&&ny>=0)return'Доминирующий класс';if(nx<0&&ny>=0)return'Культурный капитал';
+  if(nx>=0&&ny<0)return'Экономический капитал';return'Доминируемый класс';
+}
+
+// ── TASTE PARSING ────────────────────────────────────────────
+// Парсит вкусы из строки (может быть несколько через запятую)
+function parseTasteAnswers(cellValue){
+  if(!cellValue)return[];
+  return cellValue.split(',').map(s=>s.trim()).filter(Boolean);
+}
+
+// Вычисляет позиции вкусов: для каждого вкуса — средняя nx,ny тех кто его выбрал
+function computeTastePositions(results, tasteRows){
+  const tqs=CFG.tasteQuestions||[];
+  if(!tqs.length||!tasteRows||!tasteRows.length)return[];
+
+  const positions=[];
+  tqs.forEach((tq,tqi)=>{
+    tq.options.forEach(tasteName=>{
+      const matching=[];
+      results.forEach((r,ri)=>{
+        const tasteRow=tasteRows[ri];
+        if(!tasteRow)return;
+        const cell=tasteRow[tqi]||'';
+        const chosen=parseTasteAnswers(cell);
+        // проверяем вхождение (без учёта регистра)
+        if(chosen.some(c=>c.toLowerCase().includes(tasteName.toLowerCase())||tasteName.toLowerCase().includes(c.toLowerCase()))){
+          matching.push(r);
+        }
+      });
+      if(matching.length>0){
+        const avgNx=matching.reduce((s,r)=>s+r.nx,0)/matching.length;
+        const avgNy=matching.reduce((s,r)=>s+r.ny,0)/matching.length;
+        positions.push({label:tasteName,nx:avgNx,ny:avgNy,count:matching.length,question:tq.label});
+      }
+    });
+  });
+  return positions;
+}
+
+// ── CSV ────────────────────────────────────────────────────────
+function processCSV(){
+  const raw=document.getElementById('csv-input').value.trim();
+  const err=document.getElementById('csv-err');err.style.display='none';
+  if(!raw){err.textContent='Вставьте CSV.';err.style.display='block';return;}
+  const parsed=Papa.parse(raw,{skipEmptyLines:true});
+  const rows=parsed.data;if(rows.length<2){err.textContent='Мало строк.';err.style.display='block';return;}
+  let start=0;
+  if((rows[0][0]||'').toLowerCase().match(/отметка|timestamp|дата|время/))start=1;
+  const need=CFG.questions.length;
+  const tqs=CFG.tasteQuestions||[];
+  const data=rows.slice(1).filter(r=>r.length>=start+need);
+  if(!data.length){err.textContent=`Нужно минимум ${need} колонок с ответами (найдено ${(rows[1]?.length||0)-start}).`;err.style.display='block';return;}
+  const mx=getMaxScores();
+  const xCap=CFG.capitals.find(c=>c.role==='x')||CFG.capitals[0];
+  const yCap=CFG.capitals.find(c=>c.role==='y')||CFG.capitals[1];
+
+  // Строки с капиталами
+  const results=data.map((r,i)=>{
+    const scores=scoreRow(r.slice(start,start+need));
+    const total=CFG.capitals.reduce((s,c)=>s+scores[c.id],0);
+    const nx=scores[xCap.id]-mx[xCap.id]/2;
+    const ny=scores[yCap.id]-mx[yCap.id]/2;
+    return{id:i+1,scores,total,nx,ny,quad:getQuad(nx,ny)};
+  });
+
+  // Строки с вкусами (после вопросов о капиталах)
+  let tasteRows=null;
+  if(tqs.length){
+    tasteRows=data.map(r=>r.slice(start+need,start+need+tqs.length));
+  }
+
+  const tastePositions=computeTastePositions(results,tasteRows);
+  lastTasteData=tastePositions;
+  renderResults(results,mx,tastePositions);
+}
+
+function loadSample(){
+  const pick=(opts,bias)=>{const w=bias===0?[0.6,0.3,0.1]:bias===1?[0.2,0.5,0.3]:[0.05,0.2,0.75];const r=Math.random();return r<w[0]?opts[0]:r<w[0]+w[1]?opts[1]:opts[2];};
+  const tqs=CFG.tasteQuestions||[];
+  const hdr=['Отметка времени',...CFG.questions.map(q=>q.label),...tqs.map(q=>q.label)];
+  const rows=[hdr];
+  const tasteSamples=[
+    ['Классика','Нон-фикшн'],['Джаз','Классическая литература'],['Рок','Современная проза'],
+    ['Поп','Детективы'],['Рэп / хип-хоп','Фантастика'],['Электронная','Детективы'],['Фолк','Поэзия'],
+  ];
+  for(let i=0;i<40;i++){
+    const bias=i<14?0:i<28?1:2;
+    const row=[`${String(1+i%28).padStart(2,'0')}.03.2025 ${String(9+i%8).padStart(2,'0')}:00`];
+    CFG.questions.forEach(q=>{const noise=Math.random()<0.2?(Math.random()<0.5?-1:1):0;const b=Math.max(0,Math.min(q.options.length-1,bias+noise));row.push(q.options[b].text.split('|')[0]);});
+    tqs.forEach((tq,tqi)=>{
+      // случайно выбираем 1-2 вкуса
+      const sample=tasteSamples[(i+tqi)%tasteSamples.length];
+      const chosen=bias===0?[sample[0]]:bias===1?[sample[0],sample[1]]:[sample[1]];
+      row.push(chosen.filter(c=>tq.options.includes(c)).join(', ')||tq.options[0]);
+    });
+    rows.push(row);
+  }
+  for(let i=rows.length-1;i>1;i--){const j=1+Math.floor(Math.random()*(i-1));[rows[i],rows[j]]=[rows[j],rows[i]];}
+  document.getElementById('csv-input').value=rows.map(r=>r.map(c=>c.includes(',')?`"${c}"`:c).join(',')).join('\n');
+}
+
+// ── BOURDIEU SPACE ────────────────────────────────────────────
+function drawSpace(res, tastePositions){
+  const mode=document.querySelector('input[name=spaceMode]:checked')?.value||'tastes';
+  const svg=document.getElementById('space-svg');
+  svg.innerHTML='';
+  const W=540,H=420,PL=70,PR=70,PT=50,PB=50;
+  const plotW=W-PL-PR,plotH=H-PT-PB;
+  const cx=PL+plotW/2,cy=PT+plotH/2;
+  const xCap=CFG.capitals.find(c=>c.role==='x')||CFG.capitals[0];
+  const yCap=CFG.capitals.find(c=>c.role==='y')||CFG.capitals[1];
+  const mx=getMaxScores();
+  const xR=mx[xCap.id]/2||3;
+  const yR=mx[yCap.id]/2||4;
+
+  const toX=nx=>cx+(nx/xR)*(plotW/2);
+  const toY=ny=>cy-(ny/yR)*(plotH/2);
+
+  function el(tag,a,txt){const e=document.createElementNS('http://www.w3.org/2000/svg',tag);Object.entries(a).forEach(([k,v])=>e.setAttribute(k,v));if(txt!=null)e.textContent=txt;return e;}
+
+  // Quadrant fills
+  [{x:cx,y:PT,w:plotW/2,h:plotH/2,c:'rgba(186,117,23,0.06)'},{x:PL,y:PT,w:plotW/2,h:plotH/2,c:'rgba(83,74,183,0.06)'},{x:cx,y:cy,w:plotW/2,h:plotH/2,c:'rgba(153,60,29,0.06)'},{x:PL,y:cy,w:plotW/2,h:plotH/2,c:'rgba(130,130,130,0.05)'}]
+    .forEach(q=>svg.appendChild(el('rect',{x:q.x,y:q.y,width:q.w,height:q.h,fill:q.c})));
+
+  // Grid
+  for(let v=Math.ceil(-xR);v<=Math.floor(xR);v++){if(v===0)continue;const x=toX(v);svg.appendChild(el('line',{x1:x,y1:PT,x2:x,y2:H-PB,stroke:'rgba(0,0,0,0.07)','stroke-width':'0.5','stroke-dasharray':'2,3'}));svg.appendChild(el('text',{x,y:cy+13,'text-anchor':'middle','font-size':'9','font-family':'system-ui','fill':'#aaa'},v));}
+  for(let v=Math.ceil(-yR);v<=Math.floor(yR);v++){if(v===0)continue;const y=toY(v);svg.appendChild(el('line',{x1:PL,y1:y,x2:W-PR,y2:y,stroke:'rgba(0,0,0,0.07)','stroke-width':'0.5','stroke-dasharray':'2,3'}));svg.appendChild(el('text',{x:cx-6,y:y+3,'text-anchor':'end','font-size':'9','font-family':'system-ui','fill':'#aaa'},v));}
+
+  // Axes
+  svg.appendChild(el('line',{x1:PL-12,y1:cy,x2:W-PR+12,y2:cy,stroke:'#1a1a18','stroke-width':'1.5'}));
+  svg.appendChild(el('line',{x1:cx,y1:H-PB+12,x2:cx,y2:PT-12,stroke:'#1a1a18','stroke-width':'1.5'}));
+  function arrow(x,y,d){const pts={right:`${x},${y} ${x-8},${y-4} ${x-8},${y+4}`,left:`${x},${y} ${x+8},${y-4} ${x+8},${y+4}`,up:`${x},${y} ${x-4},${y+8} ${x+4},${y+8}`,down:`${x},${y} ${x-4},${y-8} ${x+4},${y-8}`};svg.appendChild(el('polygon',{points:pts[d],fill:'#1a1a18'}));}
+  arrow(W-PR+12,cy,'right');arrow(PL-12,cy,'left');arrow(cx,PT-12,'up');arrow(cx,H-PB+12,'down');
+
+  // Axis labels
+  svg.appendChild(el('text',{x:cx+5,y:cy+13,'font-size':'10','font-family':'system-ui','fill':'#9a9994'},'0'));
+  [{x:W-PR+14,y:cy-12,a:'start',c:'#BA7517',t:`${xCap.emoji} ${xCap.label} +`},{x:PL-14,y:cy-12,a:'end',c:'#BA7517',t:`− ${xCap.label}`},{x:cx+8,y:PT-16,a:'start',c:'#534AB7',t:`${yCap.emoji} ${yCap.label} +`},{x:cx+8,y:H-PB+20,a:'start',c:'#534AB7',t:`− ${yCap.label}`}]
+    .forEach(l=>svg.appendChild(el('text',{x:l.x,y:l.y,'text-anchor':l.a,'font-size':'11','font-weight':'600','font-family':'system-ui','fill':l.c},l.t)));
+  svg.appendChild(el('text',{x:W/2,y:22,'text-anchor':'middle','font-size':'12','font-weight':'700','font-family':'system-ui','fill':'#1a1a18'},'Капитал +'));
+
+  const tooltip=document.getElementById('tooltip');
+
+  // ── Respondent dots ──
+  if(mode==='respondents'||mode==='both'){
+    res.forEach(r=>{
+      const px=toX(r.nx),py=toY(r.ny);
+      const c=el('circle',{cx:px,cy:py,r:'4',fill:'#534AB7','fill-opacity':'0.35',stroke:'#534AB7','stroke-width':'0.8',cursor:'pointer'});
+      c.addEventListener('mouseenter',e=>{
+        const lines=[`<b>Респондент ${r.id}</b>`];
+        CFG.capitals.forEach(cap=>lines.push(`${cap.emoji} ${cap.label}: ${r.scores[cap.id]}`));
+        lines.push(`<b>Квадрант:</b> ${r.quad}`);
+        tooltip.innerHTML=lines.join('<br>');tooltip.style.opacity='1';
+      });
+      c.addEventListener('mousemove',e=>{tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.clientY-10)+'px';});
+      c.addEventListener('mouseleave',()=>{tooltip.style.opacity='0';});
+      svg.appendChild(c);
+    });
+  }
+
+  // ── Taste labels ──
+  if((mode==='tastes'||mode==='both')&&tastePositions&&tastePositions.length){
+    // Palette for different taste questions
+    const TASTE_COLORS=['#C0392B','#534AB7','#0F6E56','#BA7517','#7B3FA0','#1A6E8A','#8B4513'];
+    const questionLabels=[...new Set(tastePositions.map(t=>t.question))];
+
+    tastePositions.forEach(tp=>{
+      const px=toX(tp.nx),py=toY(tp.ny);
+      const colorIdx=questionLabels.indexOf(tp.question)%TASTE_COLORS.length;
+      const color=TASTE_COLORS[colorIdx];
+
+      // Small dot at position
+      svg.appendChild(el('circle',{cx:px,cy:py,r:'3',fill:color,'fill-opacity':'0.8'}));
+
+      // Text label
+      const labelEl=el('text',{
+        x:px,y:py-7,
+        'text-anchor':'middle',
+        'font-size':'11',
+        'font-weight':'600',
+        'font-family':'system-ui',
+        'fill':color,
+        cursor:'pointer',
+      },tp.label);
+
+      // White background for readability
+      labelEl.addEventListener('mouseenter',e=>{
+        tooltip.innerHTML=`<b>${tp.label}</b><br>Вопрос: ${tp.question}<br>Выбрало: ${tp.count} чел.<br>Позиция: X=${tp.nx.toFixed(1)}, Y=${tp.ny.toFixed(1)}`;
+        tooltip.style.opacity='1';
+      });
+      labelEl.addEventListener('mousemove',e=>{tooltip.style.left=(e.clientX+14)+'px';tooltip.style.top=(e.clientY-10)+'px';});
+      labelEl.addEventListener('mouseleave',()=>{tooltip.style.opacity='0';});
+
+      // Background rect
+      const bg=el('rect',{x:px-35,y:py-19,width:70,height:14,fill:'white','fill-opacity':'0.75',rx:'2'});
+      svg.appendChild(bg);
+      svg.appendChild(labelEl);
+    });
+
+    // Legend for taste questions
+    if(questionLabels.length>1){
+      questionLabels.forEach((ql,i)=>{
+        const color=TASTE_COLORS[i%TASTE_COLORS.length];
+        const ly=H-10-i*14;
+        svg.appendChild(el('rect',{x:PL,y:ly-9,width:8,height:8,fill:color,rx:'1'}));
+        svg.appendChild(el('text',{x:PL+12,y:ly,'font-size':'9','font-family':'system-ui','fill':color},ql));
+      });
+    }
+  }
+
+  // Quad legend
+  const ql=document.getElementById('quad-legend');
+  ql.innerHTML=[
+    {l:'↖ Культурный капитал',d:'Низкий экономический + высокий культурный',c:'#534AB7'},
+    {l:'↗ Доминирующий класс',d:'Оба капитала высоки — элита',c:'#BA7517'},
+    {l:'↙ Доминируемый класс',d:'Оба капитала низкие',c:'#888'},
+    {l:'↘ Экономический капитал',d:'Высокий экономический + низкий культурный',c:'#993C1D'},
+  ].map(q=>`<div style="padding:8px 10px;border-radius:var(--r-sm);background:var(--bg2);border:0.5px solid var(--border)"><div style="font-size:12px;font-weight:500;color:${q.c};margin-bottom:2px">${q.l}</div><div style="font-size:11px;color:var(--text3)">${q.d}</div></div>`).join('');
+}
+
+// ── RENDER RESULTS ────────────────────────────────────────────
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch(_){}});charts={};}
+
+function renderResults(res,mx,tastePositions){
+  destroyCharts();lastResults=res;lastTasteData=tastePositions;
+  document.getElementById('analyze-upload').style.display='none';
+  document.getElementById('analyze-results').style.display='block';
+  document.getElementById('rcnt').textContent=res.length;
+  const caps=CFG.capitals;
+  const totalMax=caps.reduce((s,c)=>s+mx[c.id],0);
+  const avg={};caps.forEach(c=>avg[c.id]=res.reduce((s,r)=>s+r.scores[c.id],0)/res.length);
+  const avgTotal=caps.reduce((s,c)=>s+avg[c.id],0);
+
+  document.getElementById('metric-cards').innerHTML=[
+    ...caps.map(c=>`<div class="metric-card"><div class="metric-lbl">${c.emoji} ${c.label}</div><div class="metric-val" style="color:${c.color}">${avg[c.id].toFixed(1)}</div><div class="metric-sub">из ${mx[c.id]}</div></div>`),
+    `<div class="metric-card"><div class="metric-lbl">📊 Итого</div><div class="metric-val">${avgTotal.toFixed(1)}</div><div class="metric-sub">из ${totalMax}</div></div>`
+  ].join('');
+
+  const qlabels=['Доминирующий класс','Культурный капитал','Экономический капитал','Доминируемый класс'];
+  charts.quad=new Chart(document.getElementById('quad-chart'),{type:'doughnut',data:{labels:qlabels,datasets:[{data:qlabels.map(l=>res.filter(r=>r.quad===l).length),backgroundColor:['#BA7517','#534AB7','#993C1D','#888'],borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},color:'#888',padding:10}},tooltip:{callbacks:{label:ctx=>` ${ctx.parsed} чел. (${Math.round(ctx.parsed/res.length*100)}%)`}}}}});
+  charts.bar=new Chart(document.getElementById('bar-chart'),{type:'bar',data:{labels:caps.map(c=>c.label),datasets:[{data:caps.map(c=>Math.round(avg[c.id]/mx[c.id]*100)),backgroundColor:caps.map(c=>c.color+'aa'),borderColor:caps.map(c=>c.color),borderWidth:1,borderRadius:4,label:'%'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw}% от максимума`}}},scales:{x:{ticks:{color:'#999',font:{size:10}},grid:{display:false}},y:{min:0,max:100,ticks:{callback:v=>v+'%',color:'#999',font:{size:10}},grid:{color:'rgba(128,128,128,0.1)'}}}}});
+
+  document.getElementById('res-thead').innerHTML='<tr><th>#</th>'+caps.map(c=>`<th>${c.emoji} ${c.label} /макс ${mx[c.id]}</th>`).join('')+'<th>Итого</th><th>Квадрант</th></tr>';
+  document.getElementById('res-tbody').innerHTML=res.map(r=>{
+    const tr=r.total/totalMax;const tc=tr>=0.6?'tag-hi':tr>=0.35?'tag-mid':'tag-lo';
+    return`<tr><td style="color:var(--text3)">${r.id}</td>${caps.map(c=>{const v=r.scores[c.id];const cl=v/mx[c.id]>=0.6?'tag-hi':v/mx[c.id]>=0.35?'tag-mid':'tag-lo';return`<td><span class="tag ${cl}">${v}</span></td>`;}).join('')}<td><span class="tag ${tc}">${r.total}</span></td><td style="font-size:11px;color:var(--text2)">${r.quad}</td></tr>`;
+  }).join('');
+
+  setTimeout(()=>drawSpace(res,tastePositions),50);
+  setSubTab('space');
+}
+
+function resetAnalysis(){destroyCharts();lastResults=null;lastTasteData=null;document.getElementById('analyze-upload').style.display='block';document.getElementById('analyze-results').style.display='none';document.getElementById('csv-input').value='';document.getElementById('csv-err').style.display='none';}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+load();renderSettings();buildSchemeTable();
+</script>
+</body>
+</html>
